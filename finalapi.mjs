@@ -37,14 +37,11 @@ app.post("/convert-pdf", async (req, res) => {
         body: JSON.stringify({ value: json.base64Data, title: json.title }),
       });
 
-      console.log("Response:", response);
     }
 
-    console.log("-->", mainjson);
 
     res.json(mainjson);
   } catch (error) {
-    console.error("Error:", error);
     res.status(500).json({ error: "An error occurred" });
   }
 });
