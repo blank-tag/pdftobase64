@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -8,7 +9,8 @@
     "pdf-img-convert": "^1.2.1",
     "pdf-poppler": "^0.2.1",
     "pdf2pic": "^2.2.1",
-    "pdfjs-dist": "^3.7.107"
+    "pdfjs-dist": "^3.7.107",
+    "pdfkit": "^0.13.0"
   },
   "devDependencies": {
     "@types/node": "^20.3.2",
