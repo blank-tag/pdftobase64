@@ -15,8 +15,6 @@ app.use(bodyParser.json({ limit: '50mb' })); // Increase the payload size limit
 
 app.use(cors());
 
-
-
 app.post('/api/generate-pdf', (req, res) => {
   const jsonData = req.body;
   console.log(jsonData);
@@ -65,39 +63,39 @@ app.post('/api/generate-pdf', (req, res) => {
       currentRow = 0;
     }
 
-  // Function to draw a row
-const drawRow = (rowData, color) => {
-  const startY = table.padding + table.currentY + currentRow * (table.fontSize * table.lineHeight);
-  const rowHeight = table.fontSize * table.lineHeight;
+    // Function to draw a row
+    const drawRow = (rowData, color) => {
+      const startY = table.padding + table.currentY + currentRow * (table.fontSize * table.lineHeight);
+      const rowHeight = table.fontSize * table.lineHeight;
 
-  // Draw horizontal line at the top of the row
-  doc.moveTo(table.padding, startY).lineTo(doc.page.width - table.padding, startY).stroke();
+      // Draw horizontal line at the top of the row
+      doc.moveTo(table.padding, startY).lineTo(doc.page.width - table.padding, startY).stroke();
 
-  rowData.forEach((cellData, cellIndex) => {
-    const startX = table.padding + cellIndex * (doc.page.width / columns.length);
-    const columnWidth = doc.page.width / columns.length;
+      rowData.forEach((cellData, cellIndex) => {
+        const startX = table.padding + cellIndex * (doc.page.width / columns.length);
+        const columnWidth = doc.page.width / columns.length;
 
-    doc
-      .fillColor(table.textColor)
-      .text(cellData, startX, startY, {
-        width: columnWidth - table.padding * 2,
-        align: table.align[cellIndex],
+        doc
+          .fillColor(table.textColor)
+          .text(cellData, startX, startY, {
+            width: columnWidth - table.padding * 2,
+            align: table.align[cellIndex],
+          });
+
+        // Draw vertical lines between columns
+        doc.moveTo(startX, startY).lineTo(startX, startY + rowHeight).stroke();
+
+        // Draw closing vertical line at the end of the table
+        if (cellIndex === columns.length - 1) {
+          doc.moveTo(startX + columnWidth, startY).lineTo(startX + columnWidth, startY + rowHeight).stroke();
+        }
       });
 
-    // Draw vertical lines between columns
-    doc.moveTo(startX, startY).lineTo(startX, startY + rowHeight).stroke();
+      // Draw horizontal line at the bottom of the row
+      doc.moveTo(table.padding, startY + rowHeight).lineTo(doc.page.width - table.padding, startY + rowHeight).stroke();
 
-    // Draw closing vertical line at the end of the table
-    if (cellIndex === columns.length - 1) {
-      doc.moveTo(startX + columnWidth, startY).lineTo(startX + columnWidth, startY + rowHeight).stroke();
-    }
-  });
-
-  // Draw horizontal line at the bottom of the row
-  doc.moveTo(table.padding, startY + rowHeight).lineTo(doc.page.width - table.padding, startY + rowHeight).stroke();
-
-  currentRow++;
-};
+      currentRow++;
+    };
 
     // Draw the header row
     drawRow(columns, table.headerColor);
@@ -132,37 +130,43 @@ const drawRow = (rowData, color) => {
       });
 
     // Update the current Y position for drawing text
-    table.currentY += table.padding + table.fontSize * table.lineHeight + 150;  };
+    table.currentY += table.padding + table.fontSize * table.lineHeight + 150;
+  };
 
   // Function to draw an image from base64 data
- const drawImage = (base64Data) => {
+ // Function to draw an image from base64 data
+const drawImage = async (base64Data) => {
+  return new Promise((resolve) => {
     const imageData = base64Data.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(imageData, 'base64');
-  
-    // Calculate the width and height of the image
-    const imageWidth = 200; // Adjust the width as desired
-    const imageHeight = 500; // Adjust the height as desired
-  
-    // Calculate the available height for the image
-    const availableHeight = doc.page.height - table.currentY - table.padding;
-  
-    // Check if the image fits on the current page, otherwise start a new page
-    if (availableHeight < imageHeight) {
+
+    const image = doc.openImage(imageBuffer);
+    const maxWidth = doc.page.width - 2 * table.padding;
+    const maxHeight = doc.page.height - table.currentY - table.padding;
+
+    const targetWidth = 200;
+    const targetHeight = 200;
+    const scaleFactor = Math.min(targetWidth / image.width, targetHeight / image.height);
+    const imageWidth = image.width * scaleFactor;
+    const imageHeight = image.height * scaleFactor;
+
+    if (table.currentY + imageHeight + 2 * table.padding > maxHeight) {
       doc.addPage();
       table.tablesOnCurrentPage = 0;
       table.currentY = 0;
     }
-  
-    // Draw the image
-    doc.image(imageBuffer, {
-      fit: [imageWidth, imageHeight],
-      align: 'center',
-      valign: 'center',
+
+    doc.image(image, table.padding, table.currentY + table.padding, {
+      width: imageWidth,
+      height: imageHeight,
     });
-  
-    // Update the current Y position for drawing images
-    table.currentY += imageHeight + table.padding;
-  };
+
+    table.currentY += imageHeight + 2 * table.padding;
+    resolve();
+  });
+};
+
+
 
   // Function to add the name and value to the PDF
   const addNameAndValue = (name, value) => {
@@ -177,7 +181,16 @@ const drawRow = (rowData, color) => {
   };
 
   // Iterate over the content array
-  jsonData.content.forEach((contentItem) => {
+  let itemCount = 0; // Counter for the number of item types on the current page
+  jsonData.content.forEach(async (contentItem) => {
+    if (itemCount >= 2) {
+      // If two item types are already present on the page, start a new page
+      doc.addPage();
+      table.tablesOnCurrentPage = 0;
+      table.currentY = 0;
+      itemCount = 0;
+    }
+
     if (contentItem.type === 1) {
       const { value } = contentItem;
       const { columns, rows } = value;
@@ -185,16 +198,21 @@ const drawRow = (rowData, color) => {
         doc.addPage();
         table.tablesOnCurrentPage = 0;
         table.currentY = 0;
+        itemCount = 0;
       }
       drawTable(columns, rows);
+      itemCount++;
     } else if (contentItem.type === 2) {
       const { value } = contentItem;
       writeText(value);
+      itemCount++;
     } else if (contentItem.type === 3) {
       const { value } = contentItem;
-      drawImage(value);
+      await drawImage(value);
+      itemCount++;
     } else if (contentItem.name && contentItem.value) {
       addNameAndValue(contentItem.name, contentItem.value);
+      itemCount++;
     }
   });
 
