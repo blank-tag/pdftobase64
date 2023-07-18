@@ -64,38 +64,43 @@ app.post('/api/generate-pdf', (req, res) => {
     }
 
     // Function to draw a row
-    const drawRow = (rowData, color) => {
-      const startY = table.padding + table.currentY + currentRow * (table.fontSize * table.lineHeight);
-      const rowHeight = table.fontSize * table.lineHeight;
+  const drawRow = (rowData, color) => {
+  const startY = table.padding + table.currentY + currentRow * (table.fontSize * table.lineHeight);
+  const rowHeight = table.fontSize * table.lineHeight;
 
-      // Draw horizontal line at the top of the row
-      doc.moveTo(table.padding, startY).lineTo(doc.page.width - table.padding, startY).stroke();
+  // Draw horizontal line at the top of the row
+  doc.moveTo(table.padding, startY).lineTo(doc.page.width - table.padding, startY).stroke();
 
-      rowData.forEach((cellData, cellIndex) => {
-        const startX = table.padding + cellIndex * (doc.page.width / columns.length);
-        const columnWidth = doc.page.width / columns.length;
+  rowData.forEach((cellData, cellIndex) => {
+    const startX = table.padding + cellIndex * (doc.page.width / columns.length);
+    const columnWidth = doc.page.width / columns.length;
 
-        doc
-          .fillColor(table.textColor)
-          .text(cellData, startX, startY, {
-            width: columnWidth - table.padding * 2,
-            align: table.align[cellIndex],
-          });
+    // Draw vertical lines between columns
+    doc.moveTo(startX, startY).lineTo(startX, startY + rowHeight).stroke();
 
-        // Draw vertical lines between columns
-        doc.moveTo(startX, startY).lineTo(startX, startY + rowHeight).stroke();
+    // Draw closing vertical line at the end of the table
+    if (cellIndex === columns.length - 1) {
+      doc.moveTo(startX + columnWidth, startY).lineTo(startX + columnWidth, startY + rowHeight).stroke();
+    }
 
-        // Draw closing vertical line at the end of the table
-        if (cellIndex === columns.length - 1) {
-          doc.moveTo(startX + columnWidth, startY).lineTo(startX + columnWidth, startY + rowHeight).stroke();
-        }
+    // Draw text in the cell
+    doc
+      .fillColor(table.textColor)
+      .text(cellData, startX + table.padding, startY + table.padding, {
+        width: columnWidth - 2 * table.padding,
+        align: table.align[cellIndex],
       });
+  });
 
-      // Draw horizontal line at the bottom of the row
-      doc.moveTo(table.padding, startY + rowHeight).lineTo(doc.page.width - table.padding, startY + rowHeight).stroke();
+  // Draw horizontal line at the bottom of the row
+  doc.moveTo(table.padding, startY + rowHeight).lineTo(doc.page.width - table.padding, startY + rowHeight).stroke();
 
-      currentRow++;
-    };
+  // Draw vertical line at the end of the row
+  doc.moveTo(doc.page.width - table.padding, startY).lineTo(doc.page.width - table.padding, startY + rowHeight).stroke();
+
+  currentRow++;
+};
+
 
     // Draw the header row
     drawRow(columns, table.headerColor);
