@@ -140,17 +140,33 @@ const drawRow = (rowData, color) => {
     table.currentY += table.padding + table.fontSize * table.lineHeight + 150;  };
 
   // Function to draw an image from base64 data
-  const drawImage = (base64Data) => {
+ const drawImage = (base64Data) => {
     const imageData = base64Data.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(imageData, 'base64');
+  
+    // Calculate the width and height of the image
+    const imageWidth = 200; // Adjust the width as desired
+    const imageHeight = 500; // Adjust the height as desired
+  
+    // Calculate the available height for the image
+    const availableHeight = doc.page.height - table.currentY - table.padding;
+  
+    // Check if the image fits on the current page, otherwise start a new page
+    if (availableHeight < imageHeight) {
+      doc.addPage();
+      table.tablesOnCurrentPage = 0;
+      table.currentY = 0;
+    }
+  
+    // Draw the image
     doc.image(imageBuffer, {
-      fit: [200, 200], // Adjust the width and height as desired
+      fit: [imageWidth, imageHeight],
       align: 'center',
       valign: 'center',
     });
-
+  
     // Update the current Y position for drawing images
-    table.currentY += 220 + 300; // Adjust the value based on the image height and desired spacing
+    table.currentY += imageHeight + table.padding;
   };
 
   // Function to add the name and value to the PDF
