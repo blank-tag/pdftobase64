@@ -6,17 +6,12 @@ import crypto from "crypto";
 import PDFDocument from 'pdfkit';
 import dotenv from "dotenv";
 import path from 'path';
-
-
 import bodyParser from 'body-parser';
-
 
 dotenv.config(); // Load environment variables from the .env file
 
 const app = express();
-app.use(express.json());
-app.use(bodyParser.json());
-
+app.use(bodyParser.json({ limit: '50mb' })); // Increase the payload size limit
 
 app.use(cors());
 
