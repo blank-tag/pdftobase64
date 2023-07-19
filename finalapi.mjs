@@ -7,9 +7,6 @@ import PDFDocument from 'pdfkit';
 import dotenv from "dotenv";
 import path from 'path';
 import bodyParser from 'body-parser';
-import AWS from 'aws-sdk';
-import stream from 'stream';
-
 
 dotenv.config(); // Load environment variables from the .env file
 
@@ -18,16 +15,7 @@ app.use(bodyParser.json({ limit: '50mb' })); // Increase the payload size limit
 
 app.use(cors());
 
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-});
-
-
-const s3 = new AWS.S3();
-
-
-app.post('/api/generate-pdf', async (req, res) => {
+app.post('/api/generate-pdf', (req, res) => {
   const jsonData = req.body;
   console.log(jsonData);
 
@@ -233,46 +221,13 @@ const drawImage = async (base64Data) => {
     }
   });
 
-  const bufferStream = new stream.PassThrough();
-  doc.pipe(bufferStream);
-  doc.end();
-
-  const buffer = await new Promise((resolve, reject) => {
-    const chunks = [];
-    bufferStream.on('data', (chunk) => chunks.push(chunk));
-    bufferStream.on('end', () => resolve(Buffer.concat(chunks)));
-    bufferStream.on('error', reject);
-  });
-
-  const randomKey = crypto.randomBytes(8).toString('hex');
-  const pdfKey = `${randomKey}.pdf`;
-
-
-    // Upload PDF to S3 bucket
-    const uploadParams = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: process.env.AWS_BUCKET_FOLDER + pdfKey, // Specify the desired filename in the bucket
-      Body: buffer,
-    };
-
-    s3.upload(uploadParams, (err, data) => {
-      if (err) {
-        console.error('Error uploading PDF:', err);
-        return res.status(500).json({ error: 'Failed to upload PDF' });
-      }
-
-      console.log('PDF uploaded successfully:', data.Location);
-
   // Set the response headers for the PDF file
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename=output.pdf');
-  res.send(buffer);
-
 
   // Stream the PDF to the response
   doc.pipe(res);
   doc.end();
-});
 });
 
 app.post("/convert-pdf", async (req, res) => {
