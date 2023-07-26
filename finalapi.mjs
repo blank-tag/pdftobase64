@@ -255,7 +255,7 @@ app.post("/convert-pdf", async (req, res) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ value: json.base64Data, title: json.title }),
+        body: JSON.stringify({ value: json.base64Data, title: json.title, email: "de@de.com" }),
       });
 
       console.log("Response:", response);
